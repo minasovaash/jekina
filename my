@@ -1,0 +1,151 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define DEBUG 0
+#define UNIT 0101
+#include <stdio.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <string.h>
+#include <locale.h>
+#pragma warning(disable : 4996)
+
+int main()
+{
+	system("chcp 1251");        // добавляем поддержку русской раскладки
+	system("cls");		    // очищаем консоль
+	char current;		    // текущий введенный символ
+	int k = 1;		    // счётчик для выделения памяти	
+	int pos, i, j, n, length = 0;    // n - количество узлов, length - количество рёбер
+	int full;                   // определяет единицы в получившейся матрице для записи в файл 
+	FILE* file;		    // указатель на файл
+	int sum = 1;
+
+	//--------------------------------------------------------------//
+	//		Ввод динамической матрицы			//
+	//--------------------------------------------------------------//
+	printf("Введите количество узлов: ");
+	scanf_s("%d", &n);					// количество узлов
+	int* flag = (int*)malloc(n * sizeof(int));		// выделение памяти под массив флагов для определения связности
+	int** a = (int**)malloc(n * sizeof(int*));		// выделение памяти под массив строк
+	for (int arr = 0; arr < n; arr++)			// выделяем по одной ячейке помяти размером int в каждой строке
+	{
+		a[arr] = (int*)malloc(sizeof(int));
+	}
+	current = getchar();			// переход на новую строку после ввода количества узлов
+	for (i = 0; i < n; i++)
+	{
+		printf("%d  : ", i+1);
+		current = getchar();			// берём первый символ
+		for (j = 0; current != '\n'; j++)	// читаем с клавиатуры до конца строки
+		{
+			if ((current == '1') || (current == '0'))	// если 0 или 1
+			{
+				a[i] = (int*)realloc(a[i], sizeof(int) * k);	// довыделяем память на один больше (в начале int k = 1)
+				(a[i])[k - 1] = (int)current - '0';		// записываем значение в ячёку массива
+				++k;						//инк. счетчик для веделения памяти
+			}
+			current = getchar();	// получаем новое значение	
+		}
+		current = '\0';				// для перехода на новую строку возвращаем переменные к исх. виду
+		length = k - 1;				// length - длина строк
+		k = 1;					// присваиваем int к начальное значение
+	}
+	printf("\n\n");
+	//удаление ребер
+	printf("Введите заданную вершину: \n");
+		scanf("%d", &pos);
+		for (j = 0; j<(n+1); j++)	// читаем с клавиатуры до конца строки
+		{
+				(a[pos-1])[k - 1] = '0' - '0';		// записываем значение в ячёку массива
+				++k;						//инк. счетчик для веделения памяти
+			}
+		current = '\0';				// для перехода на новую строку возвращаем переменные к исх. виду
+		length = k - 1;				// length - длина строк
+		k = 1;					// присваиваем int к начальное значение
+	//Вывод  в консоль
+	printf("\n\n   ");
+	for (j = 0; j <= length - 1; j++)
+	{
+		printf("%3c", j + UNIT);
+	}
+	printf("\n");
+	for (j = 1; j <= ((3 * length) + 7); j++)
+	{
+		printf("-");
+	}
+	printf("\n");
+
+	for (i = 0; i < n; i++)
+	{
+		printf("%i| ", (i + 1));
+		for (j = 0; j < length; j++)
+		{
+			printf("%3d", a[i][j]);
+		}
+		printf("\n");
+	}
+	//			Работа с dot файлом			//
+	if ((file = fopen("Dot_file.txt", "w")) == NULL) {	// открыли файл Dot_file.txt для записи
+		printf("Cannot open file.\n");			// если ошибка, то печатаем ошибку
+		exit(1);					// завершаем программу
+	}
+	fprintf(file, "graph G{\n");				// заполняем файл на языке dot
+
+
+	int t = -1;				// индекс первой встретившийся единицы
+	full = 0;				// индекс количества единиц
+	for (i = 0; i < n; i++)
+	{
+		fprintf(file, "\t%d;\n", (i + 1));
+	}
+	for (j = 0; j < length; j++)			// цикл по столбцам
+	{
+		for (i = 0; i < n; i++)				// цикл по строкам
+		{
+			if ((a[i][j] == 1) && (full > 2))                         // если в одном столбце две 1, то печатаем ошибку, т.к. это
+										  //	противоречит определению матрицы инцидентности
+			{
+				printf("Нельзя вводить больше 2 единицы в столбце");
+				exit(-1);
+			}
+			else
+			{
+				if ((a[i][j] == 1) && (full == 0))       // изначально full = 0;
+				{
+					fprintf(file, "\t%d", (i + 1));	 // если нашли первыую единицу в столбце, то записываем в файл
+					fprintf(file, " -- ");
+					full++;				 // инк. full для поиска второй единицы
+					t = i;				 // индекс первой единицы равен i
+				}
+				else
+				{
+					if ((a[i][j] == 1) && (full == 1))       // если нашли еще единицу и уже была единица (full = 1)
+					{
+						fprintf(file, "%d", (i + 1));	 // печатаем в соответствии с форматом
+						fprintf(file, " [label=%c];\n", (j + UNIT));
+						full++;
+					}
+				}
+			}
+		}
+		if (t != -1)
+		{
+			if (full == 1)				  // если встретилась только одна единица в столбце то значит вершина замкнута сама на себя
+			{
+				fprintf(file, "\t%d", (t + 1));   // печатаем её же
+				fprintf(file, ";\n");
+			}
+		}
+		full = 0;		// обнуляем счётчики для анализа всл. столбца
+		t = -1;
+	}
+	fprintf(file, "}");
+	fclose(file);		// закрываем файл
+	system("dot C:\\Users\\mnsva\\source\\repos\\ConsoleApplication3\\ConsoleApplication3\\Dot_file.txt -Tbmp -o Dot_file.bmp");	// вызываем dot и передаем ему записанный 
+																										   // файл Dot_file.txt и полученный граф сохраняем в Dot_file.bmp 
+
+	system("rundll32  \"%ProgramFiles%\\Windows Photo Viewer\\PhotoViewer.dll\", ImageView_Fullscreen C:\\Users\\Professional\\Desktop\\Projects\\dz2\\Dot_file.bmp");
+	// Очистка памяти //
+	free(a);
+	getchar();
+	return 0;
+}
